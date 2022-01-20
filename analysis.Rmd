@@ -1,0 +1,128 @@
+---
+title: "analysis"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(glmnet)
+library(e1071)
+library(randomForest)
+```
+
+## R Markdown
+```{r}
+DataSetByAge450K<-readRDS("DataSetByAge450K.rds")
+IID_SampleID_Age<-readRDS("IID_SampleID_Age.rds")
+y<-IID_SampleID_Age$AgeUsed
+DataSetByAge450K<-t(DataSetByAge450K)
+DataSetByAge450K<-DataSetByAge450K[,1:5000]
+set.seed(1)
+train.rows<-sample(1:nrow(DataSetByAge450K),0.9*nrow(DataSetByAge450K))
+x.train<-DataSetByAge450K[train.rows,]
+x.test<-DataSetByAge450K[-train.rows,]
+y.train<-y[train.rows]
+y.test<-y[-train.rows]
+
+```
+
+```{r}
+#Load in fits for statistical learning methods
+elastic.fit<-readRDS("elasticnet_fit.rds")
+svr_linear.fit<-readRDS("svr_linear_fit.rds")
+svr_radial.fit<-readRDS("svr_radial_fit.rds")
+rf.fit<-readRDS("rforest_fit.rds")
+```
+
+```{r}
+plot(elastic.fit)
+summary(elastic.fit)
+```
+```{r}
+plot(rf.fit)
+```
+```{r}
+plot(svr_linear.fit)
+```
+```{r}
+plot(svr_radial.fit)
+```
+```{r}
+elastic.fit.finalModel<-elastic.fit$finalModel
+elastic.tunevalue<-elastic.fit.finalModel$tuneValue
+elastic.predict<-predict(elastic.fit.finalModel, newx=x.test,s=elastic.tunevalue$lambda)
+dim(elastic.predict)
+
+```
+```{r}
+elastic.tunevalue$lambda
+c<-coef(elastic.fit.finalModel,s=elastic.tunevalue$lambda)
+p<-c()
+for (i in 1:length(c)){
+  p<-append(p,c[i])
+}
+w<-which(p!=0)
+w
+c
+```
+```{r}
+rf.fit.finalModel<-rf.fit$finalModel
+rf.fit.finalModel$tuneValue
+rf.coef<-coef(rf.fit.finalModel)
+rf.predict<-predict(rf.fit.finalModel,newdata = x.test)
+
+
+
+
+```
+```{r}
+svrlinear.fit.finalModel<-svr_linear.fit$finalModel
+svrlinear.predict<-predict(svrlinear.fit.finalModel, newdata = x.test)
+
+
+
+```
+```{r}
+svrradial.fit.finalModel<-svr_radial.fit$finalModel
+svrradial.predict<-predict(svrradial.fit.finalModel, newdata = x.test)
+length(svrradial.predict)
+```
+
+```{r}
+mse<-function(predict.object){
+  mse<-mean((y.test-predict.object)^2)
+  return(mse)
+}
+sqrt(mse(elastic.predict))
+sqrt(mse(rf.predict))
+sqrt(mse(svrradial.predict))
+sqrt(mse(svrlinear.predict))
+attach(mtcars)
+par(mfrow=c(2,2))
+plot(y.test,elastic.predict,main="Elastic Net, RMSE=9.3710", xlab="True Age", ylab="Predicted Age")
+abline(lm(elastic.predict~y.test))
+plot(y.test,rf.predict,main="Random Forest, RMSE=8.6745", xlab="True Age", ylab="Predicted Age")
+abline(lm(rf.predict~y.test))
+plot(y.test,svrradial.predict,main="SVR Radial Kernel, RMSE=10.6233", xlab="True Age", ylab="Predicted Age")
+abline(lm(svrradial.predict~y.test))
+plot(y.test,svrlinear.predict,main="SVR Linear Kernel, RMSE=7.2271", xlab="True Age", ylab="Predicted Age")
+abline(lm(svrlinear.predict~y.test))
+```
+
+```{r}
+?apply
+```
+
+```{r}
+final.fit<-readRDS("svr_linear_fit_450K.rds")
+```
+
+```{r}
+plot(final.fit)
+```
+

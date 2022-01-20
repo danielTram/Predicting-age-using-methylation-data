@@ -1,0 +1,186 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+```{r}
+library(caret)
+library(e1071)
+DataSetByAge450K<-readRDS("meth450k.filter.rds")
+IID_SampleID_Age<-readRDS("IID_SampleID_Age.rds")
+y<-IID_SampleID_Age$AgeUsed
+set.seed(1)
+train.rows<-sample(1:nrow(DataSetByAge450K),0.9*nrow(DataSetByAge450K))
+x.train<-DataSetByAge450K[train.rows,]
+x.test<-DataSetByAge450K[-train.rows,]
+y.train<-y[train.rows]
+y.test<-y[-train.rows]
+```
+
+```{r}
+final.fit<-readRDS("svr_linear_fit_450K.rds")
+```
+
+```{r}
+plot(final.fit)
+```
+
+```{r}
+svrlinear.fit.finalModel<-final.fit$finalModel
+svrlinear.predict<-predict(svrlinear.fit.finalModel, newdata = x.test)
+
+mse<-function(predict.object){
+  mse<-mean((y.test-predict.object)^2)
+  return(mse)
+}
+svr.mse<-mse(svrlinear.predict)
+```
+```{r}
+plot(y.test,svrlinear.predict,main="SVR Linear Kernel, RMSE=5.2185", xlab="True Age", ylab="Predicted Age")
+abline(lm(svrlinear.predict~y.test))
+print('RMSE:')
+sqrt(svr.mse)
+summary(lm(svrlinear.predict~y.test))
+final.fit$bestTune
+```
+```{r}
+epic<-load("/Volumes/Extreme SSD/ForDaniel_SGPD 2/FinalProject/norm.beta_AIBL.Robj")
+```
+```{r}
+dim(norm.beta)
+norm.beta<-t(norm.beta)
+norm.beta[1:5,1:5]
+DataSetByAge450K[1:5,1:5]
+```
+```{r}
+dim(norm.beta)
+epic.samples<-read.csv("AIBL_EPIC_qian_age_prediction.txt",sep=' ', header=TRUE)
+#epic.samples
+epic.ID<-epic.samples$ID
+#epic.ID
+norm.beta.row<-row.names(norm.beta)
+
+v<-c()
+for (i in epic.ID){
+  val<-which(i==norm.beta.row)
+  v<-append(v,val)
+}
+epic.filter<-norm.beta[v,]
+```
+```{r}
+dim(norm.beta)
+dim(epic.filter)
+norm.beta[1:5,1:5]
+epic.filter[1:5,1:5]
+epic.samples
+```
+
+
+```{r}
+svr.coef<-coef(svrlinear.fit.finalModel)
+length(svr.coef)
+final.coef<-svr.coef[which(svr.coef!=0)]
+length(final.coef)
+d<-data.frame(final.coef)
+d
+coef.rownames<-row.names(d)
+
+```
+
+```{r}
+coef.rownames<-coef.rownames[-1]
+epic.filter.columnnames<-colnames(epic.filter)
+
+v<-c()
+for (i in epic.filter.columnnames){
+  val<-which(i==coef.rownames)
+  v<-append(v,val)
+}
+missProbes<-coef.rownames[-v]
+length(missProbes)
+missProbes #Probes that are missing in EPIC array
+```
+```{r}
+data450K.index<-c()
+for (i in colnames(DataSetByAge450K)){
+  val<-which(i==missProbes)
+  data450K.index<-append(data450K.index,val)
+}
+mean_missProbes<-apply(DataSetByAge450K[,data450K.index],2,mean)
+length(mean_missProbes)
+```
+```{r}
+epic.Index<-c()
+for (i in coef.rownames){
+  val<-which(i==epic.filter.columnnames)
+  epic.Index<-append(epic.Index,val)
+}
+colnames(epic.filter[,epic.Index]) #All non-missing probes 
+coef.rownames[v]
+
+
+```
+```{r}
+new_epic.Index<-c()
+for (i in epic.filter[,epic.Index]){
+  val<-which(i==coef.rownames[v])
+  new_epic.Index<-append(new_epic.Index,val)
+}
+colnames(new_epic.filter[,new_epic.Index])
+coef.rownames[v]
+
+```
+
+```{r}
+dim(DataSetByAge450K[,-v])
+dim(DataSetByAge450K)
+length(coef.rownames)
+#no_intercept.coef<-d[-1]
+
+```
+
+
+```{r}
+Add_MissingValues.epic_filter<-epic.filter
+
+for (i in missProbes){
+  m1<-data.frame(i=rep(NA,times=length(row.names(epic.filter))))
+  Add_MissingValues.epic_filter<-cbind(Add_MissingValues.epic_filter,m1)
+}
+dim(Add_MissingValues.epic_filter)
+dim(epic.fitler)
+
+
+```
+```{r}
+dim(epic.filter)
+length(missProbes)
+colnames(Add_MissingValues.epic_filter[,862602:870845])<-missProbes
+```
+```{r}
+Add_MissingValues.epic_filter[,862602:870845]
+```
+```{r}
+colnames(Add_MissingValues.epic_filter[862602:870845])
+```
+
+```{r}
+epic.predict<-predict(svrlinear.fit.finalModel,newdata = norm.beta)
+epic.predict
+
+
+```
+```{r}
+library(VIM)
+non_missing_epic<-kNN(data=Add_MissingValues.epic_filter,k=10)
+
+```
+```{r}
+
+```
+
